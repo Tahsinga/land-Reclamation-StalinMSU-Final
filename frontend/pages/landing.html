@@ -1,0 +1,60 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>Mimosa Mining Database</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+</head>
+<body class="bg-slate-900 min-h-screen flex flex-col items-center justify-center">
+
+  <!-- Logo and Title -->
+  <div class="text-center mb-12">
+    <h1 class="text-4xl font-bold text-white tracking-wide">MIMOSA MINING</h1>
+    <p class="text-slate-400 mt-2 text-lg">Pillar Reclamation Geospatial Database</p>
+    <div class="w-24 h-1 bg-yellow-500 mx-auto mt-4 rounded"></div>
+  </div>
+
+  <!-- Role Selection -->
+  <p class="text-slate-300 text-xl mb-8 font-medium">Select Your Department</p>
+
+  <div class="flex flex-col md:flex-row gap-6">
+
+    <!-- Surveyor -->
+    <div onclick="selectRole('surveyor')"
+      class="cursor-pointer bg-slate-800 border border-slate-600 hover:border-yellow-500 hover:bg-slate-700 transition-all duration-300 rounded-2xl p-8 w-64 text-center group">
+      <div class="text-5xl mb-4">📐</div>
+      <h2 class="text-white text-xl font-semibold group-hover:text-yellow-400">Surveyor</h2>
+      <p class="text-slate-400 text-sm mt-2">Spatial data, pillar measurements and full database access</p>
+    </div>
+
+    <!-- Miner -->
+    <div onclick="selectRole('miner')"
+      class="cursor-pointer bg-slate-800 border border-slate-600 hover:border-yellow-500 hover:bg-slate-700 transition-all duration-300 rounded-2xl p-8 w-64 text-center group">
+      <div class="text-5xl mb-4">⛏️</div>
+      <h2 class="text-white text-xl font-semibold group-hover:text-yellow-400">Miner</h2>
+      <p class="text-slate-400 text-sm mt-2">Mining operations data and reclamation sequence</p>
+    </div>
+
+    <!-- Geologist -->
+    <div onclick="selectRole('geologist')"
+      class="cursor-pointer bg-slate-800 border border-slate-600 hover:border-yellow-500 hover:bg-slate-700 transition-all duration-300 rounded-2xl p-8 w-64 text-center group">
+      <div class="text-5xl mb-4">🪨</div>
+      <h2 class="text-white text-xl font-semibold group-hover:text-yellow-400">Geologist</h2>
+      <p class="text-slate-400 text-sm mt-2">Borehole logs, GCD classification and geotechnical records</p>
+    </div>
+
+  </div>
+
+  <!-- Footer -->
+  <p class="text-slate-600 text-sm mt-16">Mimosa Mining Company — Zvishavane, Zimbabwe</p>
+
+  <script>
+    function selectRole(role) {
+      localStorage.setItem('selectedRole', role)
+      window.location.href = '/pages/login.html'
+    }
+  </script>
+
+</body>
+</html>

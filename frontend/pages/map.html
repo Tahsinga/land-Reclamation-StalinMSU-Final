@@ -1,0 +1,448 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8"/>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>Pillar Map — Mimosa Mining</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+</head>
+<body style="margin:0;padding:0;display:flex;height:100vh;overflow:hidden;background:#f8fafc;">
+
+  <!-- Sidebar -->
+  <div style="width:260px;min-height:100vh;background:#1e293b;border-right:1px solid #334155;display:flex;flex-direction:column;flex-shrink:0;">
+    <div style="padding:20px;border-bottom:1px solid #334155;">
+      <h1 style="color:#eab308;font-weight:bold;font-size:17px;margin:0;">MIMOSA MINING</h1>
+      <p style="color:#94a3b8;font-size:11px;margin:4px 0 0;">Geospatial Database</p>
+    </div>
+    <div style="padding:12px 16px;border-bottom:1px solid #334155;">
+      <p style="color:white;font-size:13px;margin:0;" id="userName"></p>
+      <span id="userRoleBadge" style="font-size:10px;padding:2px 8px;border-radius:999px;margin-top:4px;display:inline-block;font-weight:bold;text-transform:uppercase;"></span>
+    </div>
+    <div style="padding:12px;">
+      <a href="/pages/dashboard.html" style="display:flex;align-items:center;gap:10px;padding:10px 14px;border-radius:8px;color:#cbd5e1;text-decoration:none;font-size:13px;margin-bottom:4px;">📊 Dashboard</a>
+      <div style="display:flex;align-items:center;gap:10px;padding:10px 14px;border-radius:8px;background:#334155;color:#eab308;font-size:13px;font-weight:500;">🗺️ Pillar Map</div>
+    </div>
+
+    <!-- Search -->
+    <div style="padding:0 12px 12px;">
+      <input id="searchBox" type="text" placeholder="Search Pillar ID..." oninput="searchPillar(this.value)"
+        style="width:100%;background:#0f172a;color:white;border:1px solid #475569;border-radius:8px;padding:8px 12px;font-size:12px;outline:none;box-sizing:border-box;"/>
+    </div>
+
+    <!-- Pillar count -->
+    <div style="padding:0 12px 12px;display:flex;justify-content:space-between;align-items:center;">
+      <span style="color:#94a3b8;font-size:11px;">Total Pillars</span>
+      <span id="pillarCount" style="color:#eab308;font-weight:bold;font-size:16px;">...</span>
+    </div>
+
+    <!-- Selected Pillar Info -->
+    <div style="flex:1;padding:0 12px;overflow-y:auto;">
+      <div id="infoBox" style="display:none;">
+        <p style="color:#eab308;font-size:11px;font-weight:bold;text-transform:uppercase;margin-bottom:8px;border-bottom:1px solid #334155;padding-bottom:6px;">Selected Pillar</p>
+        <div id="infoContent"></div>
+      </div>
+      <p id="noSelection" style="color:#64748b;font-size:11px;text-align:center;margin-top:24px;line-height:1.6;">Click any pillar polygon<br/>to see its details here</p>
+    </div>
+
+    <!-- Controls -->
+    <div style="padding:12px;border-top:1px solid #334155;display:flex;flex-direction:column;gap:8px;">
+      <button onclick="resetView()" style="background:#334155;color:white;padding:8px;border-radius:8px;border:none;font-size:12px;cursor:pointer;width:100%;">🔄 Reset View</button>
+      <button onclick="logout()" style="background:#dc2626;color:white;padding:8px;border-radius:8px;border:none;font-size:12px;cursor:pointer;width:100%;">Logout</button>
+    </div>
+  </div>
+
+  <!-- Map Area -->
+  <div style="flex:1;display:flex;flex-direction:column;height:100vh;">
+
+    <!-- Top bar -->
+    <div style="background:white;border-bottom:1px solid #e2e8f0;padding:10px 20px;display:flex;align-items:center;justify-content:space-between;flex-shrink:0;">
+      <div style="display:flex;align-items:center;gap:20px;">
+        <h2 style="margin:0;font-size:16px;font-weight:bold;color:#0f172a;">Mimosa Mining — Pillar Map</h2>
+        <div style="display:flex;align-items:center;gap:12px;">
+          <div style="display:flex;align-items:center;gap:5px;">
+            <div style="width:14px;height:10px;background:#22d3ee;border:1.5px solid #0891b2;border-radius:2px;"></div>
+            <span style="font-size:11px;color:#475569;">Pillar</span>
+          </div>
+          <div style="display:flex;align-items:center;gap:5px;">
+            <div style="width:14px;height:10px;background:#f97316;border:2px solid #ea580c;border-radius:2px;"></div>
+            <span style="font-size:11px;color:#475569;">Selected</span>
+          </div>
+          <div style="display:flex;align-items:center;gap:5px;">
+            <div style="width:14px;height:10px;background:#a855f7;border:2px solid #7c3aed;border-radius:2px;"></div>
+            <span style="font-size:11px;color:#475569;">Search result</span>
+          </div>
+          <div style="display:flex;align-items:center;gap:5px;">
+            <div style="width:14px;height:3px;background:#1d4ed8;border-radius:2px;"></div>
+            <span style="font-size:11px;color:#475569;">Boundary</span>
+          </div>
+        </div>
+      </div>
+      <div style="display:flex;gap:8px;">
+        <button onclick="zoomIn()" style="background:#e2e8f0;border:none;padding:6px 14px;border-radius:6px;cursor:pointer;font-size:16px;font-weight:bold;">+</button>
+        <button onclick="zoomOut()" style="background:#e2e8f0;border:none;padding:6px 14px;border-radius:6px;cursor:pointer;font-size:16px;font-weight:bold;">-</button>
+        <span style="color:#94a3b8;font-size:11px;align-self:center;">Scroll to zoom • Drag to pan</span>
+      </div>
+    </div>
+
+    <!-- Canvas -->
+    <div id="canvasWrap" style="flex:1;position:relative;overflow:hidden;">
+      <canvas id="mapCanvas" style="position:absolute;top:0;left:0;cursor:crosshair;"></canvas>
+      <div id="loadMsg" style="position:absolute;top:50%;left:50%;transform:translate(-50%,-50%);color:#475569;font-size:14px;font-family:sans-serif;background:white;padding:16px 24px;border-radius:8px;box-shadow:0 2px 8px rgba(0,0,0,0.1);">Loading pillar data...</div>
+      <div id="tooltip" style="display:none;position:absolute;background:rgba(15,23,42,0.92);color:white;padding:6px 10px;border-radius:6px;font-size:11px;pointer-events:none;border:1px solid #334155;font-family:sans-serif;"></div>
+    </div>
+
+  </div>
+
+  <script>
+    // Auth
+    const token = localStorage.getItem('token')
+    const user = JSON.parse(localStorage.getItem('user') || '{}')
+    if (!token) window.location.href = '/pages/landing.html'
+    document.getElementById('userName').textContent = user.fullname || ''
+    const badge = document.getElementById('userRoleBadge')
+    badge.textContent = user.role || ''
+    const rc = { surveyor:'background:#1d4ed8;color:#bfdbfe', miner:'background:#c2410c;color:#fed7aa', geologist:'background:#15803d;color:#bbf7d0' }
+    badge.style.cssText = (rc[user.role]||'background:#334155;color:white') + ';font-size:10px;padding:2px 8px;border-radius:999px;display:inline-block;font-weight:bold;text-transform:uppercase;margin-top:4px;'
+
+    const canvas = document.getElementById('mapCanvas')
+    const ctx = canvas.getContext('2d')
+    const wrap = document.getElementById('canvasWrap')
+    const tooltip = document.getElementById('tooltip')
+
+    let features = []
+    let boundaryFeatures = []
+    let selectedId = null
+    let searchId = null
+    let bounds = {}
+    let scale = 1
+    let offsetX = 0
+    let offsetY = 0
+    let isPanning = false
+    let startX = 0, startY = 0
+    let clickStartX = 0, clickStartY = 0
+    let baseScale = 1
+
+    function resize() {
+      canvas.width = wrap.clientWidth
+      canvas.height = wrap.clientHeight
+      computeBase()
+      draw()
+    }
+
+    function computeBase() {
+      if (!bounds.minX && bounds.minX !== 0) return
+      const rx = bounds.maxX - bounds.minX
+      const ry = bounds.maxY - bounds.minY
+      baseScale = Math.min(canvas.width / rx, canvas.height / ry) * 0.88
+    }
+
+    function toScreen(x, y) {
+      const mx = (bounds.minX + bounds.maxX) / 2
+      const my = (bounds.minY + bounds.maxY) / 2
+      return [
+        canvas.width / 2 + (x - mx) * baseScale * scale + offsetX,
+        canvas.height / 2 - (y - my) * baseScale * scale + offsetY
+      ]
+    }
+
+    function getCoords(geom) {
+      if (!geom) return []
+      if (geom.type === 'Polygon') return geom.coordinates[0]
+      if (geom.type === 'MultiPolygon') return geom.coordinates[0][0]
+      return []
+    }
+
+    function getRings(geom) {
+      if (!geom) return []
+      if (geom.type === 'LineString') return [geom.coordinates]
+      if (geom.type === 'MultiLineString') return geom.coordinates
+      if (geom.type === 'Polygon') return geom.coordinates
+      if (geom.type === 'MultiPolygon') {
+        const rings = []
+        geom.coordinates.forEach(p => p.forEach(r => rings.push(r)))
+        return rings
+      }
+      return []
+    }
+
+    function draw() {
+      if (!features.length || !bounds.minX) return
+      ctx.clearRect(0, 0, canvas.width, canvas.height)
+
+      // White background like ArcMap
+      ctx.fillStyle = '#ffffff'
+      ctx.fillRect(0, 0, canvas.width, canvas.height)
+
+      // Light grid
+      ctx.strokeStyle = '#f1f5f9'
+      ctx.lineWidth = 0.5
+      for (let x = 0; x < canvas.width; x += 50) {
+        ctx.beginPath(); ctx.moveTo(x, 0); ctx.lineTo(x, canvas.height); ctx.stroke()
+      }
+      for (let y = 0; y < canvas.height; y += 50) {
+        ctx.beginPath(); ctx.moveTo(0, y); ctx.lineTo(canvas.width, y); ctx.stroke()
+      }
+
+      // Draw boundary lines first (behind pillars)
+      if (boundaryFeatures.length) {
+        boundaryFeatures.forEach(f => {
+          const rings = getRings(f.geometry)
+          rings.forEach(ring => {
+            if (ring.length < 2) return
+            ctx.beginPath()
+            const [sx, sy] = toScreen(ring[0][0], ring[0][1])
+            ctx.moveTo(sx, sy)
+            for (let i = 1; i < ring.length; i++) {
+              const [px, py] = toScreen(ring[i][0], ring[i][1])
+              ctx.lineTo(px, py)
+            }
+            ctx.strokeStyle = '#1d4ed8'
+            ctx.lineWidth = 1.5
+            ctx.setLineDash([])
+            ctx.stroke()
+          })
+        })
+      }
+
+      // Draw pillars on top
+      features.forEach(f => {
+        const pid = f.properties.Pillar_id
+        const coords = getCoords(f.geometry)
+        if (coords.length < 3) return
+
+        ctx.beginPath()
+        const [sx, sy] = toScreen(coords[0][0], coords[0][1])
+        ctx.moveTo(sx, sy)
+        for (let i = 1; i < coords.length; i++) {
+          const [px, py] = toScreen(coords[i][0], coords[i][1])
+          ctx.lineTo(px, py)
+        }
+        ctx.closePath()
+
+        if (pid === selectedId) {
+          ctx.fillStyle = 'rgba(249,115,22,0.8)'
+          ctx.strokeStyle = '#ea580c'
+          ctx.lineWidth = 2.5
+        } else if (pid === searchId) {
+          ctx.fillStyle = 'rgba(168,85,247,0.75)'
+          ctx.strokeStyle = '#7c3aed'
+          ctx.lineWidth = 2
+        } else {
+          ctx.fillStyle = 'rgba(34,211,238,0.55)'
+          ctx.strokeStyle = '#0891b2'
+          ctx.lineWidth = 1
+        }
+        ctx.fill()
+        ctx.stroke()
+
+        // Label when zoomed in
+        if (scale > 5) {
+          const cx = coords.reduce((s, c) => s + c[0], 0) / coords.length
+          const cy = coords.reduce((s, c) => s + c[1], 0) / coords.length
+          const [lx, ly] = toScreen(cx, cy)
+          ctx.fillStyle = pid === selectedId ? '#ffffff' : '#0c4a6e'
+          ctx.font = `bold ${Math.min(11, scale * 1.2)}px Arial`
+          ctx.textAlign = 'center'
+          ctx.textBaseline = 'middle'
+          ctx.fillText(pid, lx, ly)
+        }
+      })
+    }
+
+    function pointInPoly(px, py, coords) {
+      let inside = false
+      for (let i = 0, j = coords.length - 1; i < coords.length; j = i++) {
+        const [sx, sy] = toScreen(coords[i][0], coords[i][1])
+        const [ex, ey] = toScreen(coords[j][0], coords[j][1])
+        if (((sy > py) !== (ey > py)) && (px < (ex - sx) * (py - sy) / (ey - sy) + sx)) inside = !inside
+      }
+      return inside
+    }
+
+    // Hover tooltip
+    canvas.addEventListener('mousemove', function(e) {
+      if (isPanning) {
+        offsetX += e.clientX - startX
+        offsetY += e.clientY - startY
+        startX = e.clientX
+        startY = e.clientY
+        draw()
+        return
+      }
+      const rect = canvas.getBoundingClientRect()
+      const mx = e.clientX - rect.left
+      const my = e.clientY - rect.top
+      let found = null
+      for (let i = features.length - 1; i >= 0; i--) {
+        if (pointInPoly(mx, my, getCoords(features[i].geometry))) {
+          found = features[i]; break
+        }
+      }
+      if (found) {
+        tooltip.style.display = 'block'
+        tooltip.style.left = (mx + 14) + 'px'
+        tooltip.style.top = (my - 10) + 'px'
+        tooltip.innerHTML = `<strong style="color:#eab308;">Pillar: ${found.properties.Pillar_id}</strong><br/>Area: ${found.properties.Area_sm?.toFixed(1)} m²<br/>Layer: ${found.properties.Layer || 'N/A'}`
+        canvas.style.cursor = 'pointer'
+      } else {
+        tooltip.style.display = 'none'
+        canvas.style.cursor = 'crosshair'
+      }
+    })
+
+    canvas.addEventListener('mousedown', e => {
+      isPanning = true
+      startX = e.clientX
+      startY = e.clientY
+      clickStartX = e.clientX
+      clickStartY = e.clientY
+      canvas.style.cursor = 'grabbing'
+      tooltip.style.display = 'none'
+    })
+
+    canvas.addEventListener('mouseup', function(e) {
+      isPanning = false
+      canvas.style.cursor = 'crosshair'
+      const dx = Math.abs(e.clientX - clickStartX)
+      const dy = Math.abs(e.clientY - clickStartY)
+      if (dx > 4 || dy > 4) return
+
+      const rect = canvas.getBoundingClientRect()
+      const mx = e.clientX - rect.left
+      const my = e.clientY - rect.top
+      selectedId = null
+      document.getElementById('infoBox').style.display = 'none'
+      document.getElementById('noSelection').style.display = 'block'
+
+      for (let i = features.length - 1; i >= 0; i--) {
+        if (pointInPoly(mx, my, getCoords(features[i].geometry))) {
+          selectedId = features[i].properties.Pillar_id
+          showInfo(features[i].properties)
+          break
+        }
+      }
+      draw()
+    })
+
+    canvas.addEventListener('mouseleave', () => {
+      isPanning = false
+      tooltip.style.display = 'none'
+      canvas.style.cursor = 'crosshair'
+    })
+
+    canvas.addEventListener('wheel', function(e) {
+      e.preventDefault()
+      const z = e.deltaY < 0 ? 1.15 : 0.87
+      const rect = canvas.getBoundingClientRect()
+      const mx = e.clientX - rect.left
+      const my = e.clientY - rect.top
+      offsetX = mx - z * (mx - offsetX)
+      offsetY = my - z * (my - offsetY)
+      scale *= z
+      draw()
+    }, { passive: false })
+
+    function showInfo(p) {
+      document.getElementById('infoBox').style.display = 'block'
+      document.getElementById('noSelection').style.display = 'none'
+      const rows = [
+        ['Pillar ID', p.Pillar_id],
+        ['Layer', p.Layer],
+        ['X Coord', p.X_coord?.toFixed(1)],
+        ['Y Coord', p.Y_coord?.toFixed(1)],
+        ['Elevation', p.Elevation?.toFixed(2)],
+        ['Area m²', p.Area_sm?.toFixed(2)],
+        ['Length m', p.Length?.toFixed(2)],
+        ['Perimeter', p.PERIMETER?.toFixed(2)],
+        ['Lithology', p.Lithology || 'N/A'],
+        ['Borehole ID', p.Borehole_I || 'N/A'],
+        ['Section', p.section ?? 'N/A'],
+        ['Strata', p.strata ?? 'N/A'],
+      ]
+      document.getElementById('infoContent').innerHTML = rows.map(([l, v]) =>
+        `<div style="display:flex;justify-content:space-between;gap:8px;margin-bottom:6px;">
+          <span style="color:#94a3b8;font-size:11px;">${l}</span>
+          <span style="color:white;font-size:11px;font-weight:500;text-align:right;">${v ?? 'N/A'}</span>
+        </div>`
+      ).join('')
+    }
+
+    function searchPillar(query) {
+      searchId = null
+      if (!query.trim()) {
+        selectedId = null
+        document.getElementById('infoBox').style.display = 'none'
+        document.getElementById('noSelection').style.display = 'block'
+        draw(); return
+      }
+      const found = features.find(f => String(f.properties.Pillar_id).toLowerCase().includes(query.toLowerCase()))
+      if (found) {
+        searchId = found.properties.Pillar_id
+        selectedId = found.properties.Pillar_id
+        showInfo(found.properties)
+        const coords = getCoords(found.geometry)
+        const cx = coords.reduce((s, c) => s + c[0], 0) / coords.length
+        const cy = coords.reduce((s, c) => s + c[1], 0) / coords.length
+        const mx = (bounds.minX + bounds.maxX) / 2
+        const my = (bounds.minY + bounds.maxY) / 2
+        scale = 12
+        offsetX = -(cx - mx) * baseScale * scale
+        offsetY = (cy - my) * baseScale * scale
+      }
+      draw()
+    }
+
+    function resetView() {
+      scale = 1; offsetX = 0; offsetY = 0
+      selectedId = null; searchId = null
+      document.getElementById('searchBox').value = ''
+      document.getElementById('infoBox').style.display = 'none'
+      document.getElementById('noSelection').style.display = 'block'
+      draw()
+    }
+
+    function zoomIn() { scale *= 1.3; draw() }
+    function zoomOut() { scale *= 0.77; draw() }
+    function logout() { localStorage.clear(); window.location.href = '/pages/landing.html' }
+
+    async function init() {
+      try {
+        // Load pillars
+        const res = await fetch('/data/pillars.geojson')
+        const gj = await res.json()
+        features = gj.features
+        document.getElementById('pillarCount').textContent = features.length
+
+        // Load boundary
+        try {
+          const bRes = await fetch('/data/boundary.geojson')
+          const bGj = await bRes.json()
+          boundaryFeatures = bGj.features
+        } catch(e) {
+          console.log('No boundary file found')
+        }
+
+        document.getElementById('loadMsg').style.display = 'none'
+
+        let minX = Infinity, maxX = -Infinity, minY = Infinity, maxY = -Infinity
+        features.forEach(f => {
+          getCoords(f.geometry).forEach(c => {
+            if (c[0] < minX) minX = c[0]
+            if (c[0] > maxX) maxX = c[0]
+            if (c[1] < minY) minY = c[1]
+            if (c[1] > maxY) maxY = c[1]
+          })
+        })
+        bounds = { minX, maxX, minY, maxY }
+        resize()
+      } catch(err) {
+        document.getElementById('loadMsg').textContent = 'Error loading pillar data'
+        console.error(err)
+      }
+    }
+
+    window.addEventListener('resize', resize)
+    init()
+  </script>
+</body>
+</html>

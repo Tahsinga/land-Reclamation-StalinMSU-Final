@@ -1,0 +1,868 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8"/>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>Dashboard — Mimosa Mining</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+</head>
+<body style="margin:0;padding:0;display:flex;flex-direction:column;height:100vh;overflow:hidden;background:#0f172a;font-family:sans-serif;">
+
+  <!-- Top Navigation Bar -->
+  <div style="background:#1e293b;border-bottom:1px solid #334155;padding:0 20px;display:flex;align-items:center;justify-content:space-between;height:52px;flex-shrink:0;">
+    <div style="display:flex;align-items:center;gap:16px;">
+      <h1 style="color:#eab308;font-weight:bold;font-size:16px;margin:0;">⛏ MIMOSA MINING</h1>
+      <span style="color:#334155;">|</span>
+      <span style="color:#94a3b8;font-size:13px;">Geospatial Database System</span>
+    </div>
+    <div style="display:flex;align-items:center;gap:12px;">
+      <span style="color:white;font-size:13px;" id="userName"></span>
+      <span id="userRoleBadge" style="font-size:10px;padding:2px 10px;border-radius:999px;font-weight:bold;text-transform:uppercase;"></span>
+      <button onclick="logout()" style="background:#dc2626;color:white;padding:5px 14px;border-radius:6px;border:none;font-size:12px;cursor:pointer;">Logout</button>
+    </div>
+  </div>
+
+  <!-- Main Content: Map + Tables side by side -->
+  <div style="flex:1;display:flex;overflow:hidden;">
+
+    <!-- LEFT: Map -->
+    <div style="width:50%;display:flex;flex-direction:column;border-right:2px solid #334155;">
+
+      <!-- Map Header -->
+      <div style="background:#1e293b;padding:8px 16px;display:flex;align-items:center;justify-content:space-between;flex-shrink:0;border-bottom:1px solid #334155;">
+        <div style="display:flex;align-items:center;gap:10px;">
+          <span style="color:#eab308;font-size:13px;font-weight:bold;">🗺️ Pillar Map</span>
+          <span id="pillarCount" style="color:#94a3b8;font-size:11px;"></span>
+        </div>
+        <div style="display:flex;gap:6px;align-items:center;">
+          <input id="mapSearch" type="text" placeholder="Search pillar..." oninput="searchPillar(this.value)"
+            style="background:#0f172a;color:white;border:1px solid #475569;border-radius:6px;padding:4px 10px;font-size:11px;outline:none;width:130px;"/>
+          <button onclick="zoomIn()" style="background:#334155;color:white;border:none;padding:4px 10px;border-radius:6px;cursor:pointer;font-size:14px;font-weight:bold;">+</button>
+          <button onclick="zoomOut()" style="background:#334155;color:white;border:none;padding:4px 10px;border-radius:6px;cursor:pointer;font-size:14px;font-weight:bold;">-</button>
+          <button onclick="resetView()" style="background:#334155;color:white;border:none;padding:4px 10px;border-radius:6px;cursor:pointer;font-size:11px;">Reset</button>
+          <button id="analyzeBtn" onclick="runAnalysis()" style="background:#16a34a;color:white;border:none;padding:4px 10px;border-radius:6px;cursor:pointer;font-size:11px;">Analyze</button>
+          <span id="analysisSummary" style="color:#94a3b8;font-size:11px;white-space:nowrap;"></span>
+        </div>
+      </div>
+
+      <!-- Legend -->
+      <div style="background:#1e293b;padding:4px 16px;display:flex;gap:14px;flex-shrink:0;border-bottom:1px solid #334155;">
+        <div style="display:flex;align-items:center;gap:4px;">
+          <div style="width:12px;height:8px;background:#22d3ee;border:1px solid #0891b2;border-radius:1px;"></div>
+          <span style="color:#94a3b8;font-size:10px;">Pillar</span>
+        </div>
+        <div style="display:flex;align-items:center;gap:4px;">
+          <div style="width:12px;height:8px;background:#22c55e;border:1px solid #16a34a;border-radius:1px;"></div>
+          <span style="color:#94a3b8;font-size:10px;">Good</span>
+        </div>
+        <div style="display:flex;align-items:center;gap:4px;">
+          <div style="width:12px;height:8px;background:#eab308;border:1px solid #c2410c;border-radius:1px;"></div>
+          <span style="color:#94a3b8;font-size:10px;">Fair</span>
+        </div>
+        <div style="display:flex;align-items:center;gap:4px;">
+          <div style="width:12px;height:8px;background:#ef4444;border:1px solid #b91c1c;border-radius:1px;"></div>
+          <span style="color:#94a3b8;font-size:10px;">Bad</span>
+        </div>
+        <div style="display:flex;align-items:center;gap:4px;">
+          <div style="width:12px;height:8px;background:#f97316;border:1px solid #ea580c;border-radius:1px;"></div>
+          <span style="color:#94a3b8;font-size:10px;">Selected</span>
+        </div>
+        <div style="display:flex;align-items:center;gap:4px;">
+          <div style="width:12px;height:2px;background:#60a5fa;border-radius:1px;"></div>
+          <span style="color:#94a3b8;font-size:10px;">Boundary</span>
+        </div>
+      </div>
+
+      <!-- Canvas -->
+      <div id="canvasWrap" style="flex:1;position:relative;overflow:hidden;background:white;">
+        <canvas id="mapCanvas" style="position:absolute;top:0;left:0;cursor:crosshair;"></canvas>
+        <div id="loadMsg" style="position:absolute;top:50%;left:50%;transform:translate(-50%,-50%);color:#475569;font-size:13px;background:white;padding:12px 20px;border-radius:8px;">Loading map...</div>
+        <div id="tooltip" style="display:none;position:absolute;background:rgba(15,23,42,0.93);color:white;padding:6px 10px;border-radius:6px;font-size:11px;pointer-events:none;border:1px solid #334155;"></div>
+      </div>
+
+      <!-- Selected Pillar Info Bar -->
+      <div id="pillarInfoBar" style="display:none;background:#0f172a;border-top:1px solid #334155;padding:8px 16px;">
+        <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:6px;">
+          <span style="color:#eab308;font-size:11px;font-weight:bold;">SELECTED PILLAR</span>
+          <button onclick="clearSelection()" style="background:none;border:none;color:#64748b;cursor:pointer;font-size:12px;">✕ Clear</button>
+        </div>
+        <div id="pillarInfoRow" style="display:flex;gap:8px;flex-wrap:wrap;"></div>
+      </div>
+    </div>
+
+    <!-- RIGHT: Tables -->
+    <div style="width:50%;display:flex;flex-direction:column;overflow:hidden;">
+
+      <!-- Table Tabs -->
+      <div style="background:#1e293b;border-bottom:1px solid #334155;padding:0 12px;overflow-x:auto;flex-shrink:0;">
+        <div id="tabsContainer" style="display:flex;gap:4px;padding:8px 0;"></div>
+      </div>
+
+      <!-- Table Controls -->
+      <div style="background:#1e293b;padding:8px 16px;display:flex;align-items:center;justify-content:space-between;flex-shrink:0;border-bottom:1px solid #334155;">
+        <div style="display:flex;gap:8px;align-items:center;">
+          <input id="tableSearch" type="text" placeholder="Search table..." oninput="filterTable(this.value)"
+            style="background:#0f172a;color:white;border:1px solid #475569;border-radius:6px;padding:4px 10px;font-size:11px;outline:none;width:150px;"/>
+          <span id="rowCount" style="color:#64748b;font-size:11px;"></span>
+        </div>
+        <div style="display:flex;gap:6px;">
+          <button id="addBtn" onclick="openAddModal()" style="display:none;background:#16a34a;color:white;padding:5px 12px;border-radius:6px;border:none;font-size:11px;cursor:pointer;">+ Add Row</button>
+          <button onclick="exportCSV()" style="background:#0891b2;color:white;padding:5px 12px;border-radius:6px;border:none;font-size:11px;cursor:pointer;">Export CSV</button>
+        </div>
+      </div>
+
+      <!-- Table Content -->
+      <div style="flex:1;overflow:auto;padding:0;">
+        <div id="tableContainer" style="padding:12px;">
+          <div style="color:#64748b;font-size:13px;text-align:center;margin-top:40px;">Select a tab to view data</div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Add/Edit Modal -->
+  <div id="modal" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,0.75);z-index:1000;align-items:center;justify-content:center;">
+    <div style="background:#1e293b;border:1px solid #334155;border-radius:12px;padding:24px;width:520px;max-height:80vh;overflow-y:auto;">
+      <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:16px;">
+        <h3 id="modalTitle" style="color:white;margin:0;font-size:15px;font-weight:bold;"></h3>
+        <button onclick="closeModal()" style="background:none;border:none;color:#94a3b8;font-size:20px;cursor:pointer;">✕</button>
+      </div>
+      <div id="modalFields" style="display:flex;flex-direction:column;gap:10px;"></div>
+      <div style="display:flex;gap:8px;margin-top:20px;justify-content:flex-end;">
+        <button onclick="closeModal()" style="background:#334155;color:white;padding:8px 20px;border-radius:8px;border:none;cursor:pointer;font-size:13px;">Cancel</button>
+        <button onclick="submitModal()" style="background:#16a34a;color:white;padding:8px 20px;border-radius:8px;border:none;cursor:pointer;font-size:13px;font-weight:bold;">Save</button>
+      </div>
+    </div>
+  </div>
+
+  <script>
+    // ===========================
+    // AUTH
+    // ===========================
+    const token = localStorage.getItem('token')
+    const user = JSON.parse(localStorage.getItem('user') || '{}')
+    if (!token) window.location.href = '/pages/landing.html'
+    document.getElementById('userName').textContent = user.fullname || ''
+    const badge = document.getElementById('userRoleBadge')
+    badge.textContent = user.role || ''
+    const rc = {
+      surveyor: 'background:#1d4ed8;color:#bfdbfe',
+      miner: 'background:#c2410c;color:#fed7aa',
+      geologist: 'background:#15803d;color:#bbf7d0'
+    }
+    badge.style.cssText = (rc[user.role] || 'background:#334155;color:white') +
+      ';font-size:10px;padding:2px 10px;border-radius:999px;font-weight:bold;text-transform:uppercase;'
+
+    // ===========================
+    // MAP
+    // ===========================
+    const canvas = document.getElementById('mapCanvas')
+    const ctx = canvas.getContext('2d')
+    const wrap = document.getElementById('canvasWrap')
+    const tooltip = document.getElementById('tooltip')
+
+    let features = []
+    let boundaryFeatures = []
+    let selectedId = null
+    let searchId = null
+    let bounds = {}
+    let scale = 1
+    let offsetX = 0
+    let offsetY = 0
+    let isPanning = false
+    let startX = 0
+    let startY = 0
+    let clickStartX = 0
+    let clickStartY = 0
+    let baseScale = 1
+
+    function resize() {
+      canvas.width = wrap.clientWidth
+      canvas.height = wrap.clientHeight
+      computeBase()
+      draw()
+    }
+
+    function computeBase() {
+      if (!bounds.minX && bounds.minX !== 0) return
+      const rx = bounds.maxX - bounds.minX
+      const ry = bounds.maxY - bounds.minY
+      baseScale = Math.min(canvas.width / rx, canvas.height / ry) * 0.88
+    }
+
+    function toScreen(x, y) {
+      const mx = (bounds.minX + bounds.maxX) / 2
+      const my = (bounds.minY + bounds.maxY) / 2
+      return [
+        canvas.width / 2 + (x - mx) * baseScale * scale + offsetX,
+        canvas.height / 2 - (y - my) * baseScale * scale + offsetY
+      ]
+    }
+
+    function getCoords(geom) {
+      if (!geom) return []
+      if (geom.type === 'Polygon') return geom.coordinates[0]
+      if (geom.type === 'MultiPolygon') return geom.coordinates[0][0]
+      return []
+    }
+
+    function getRings(geom) {
+      if (!geom) return []
+      if (geom.type === 'LineString') return [geom.coordinates]
+      if (geom.type === 'MultiLineString') return geom.coordinates
+      if (geom.type === 'Polygon') return geom.coordinates
+      if (geom.type === 'MultiPolygon') {
+        const r = []
+        geom.coordinates.forEach(p => p.forEach(x => r.push(x)))
+        return r
+      }
+      return []
+    }
+
+    function draw() {
+      if (!features.length || !bounds.minX) return
+      ctx.clearRect(0, 0, canvas.width, canvas.height)
+
+      // White background like ArcMap
+      ctx.fillStyle = '#ffffff'
+      ctx.fillRect(0, 0, canvas.width, canvas.height)
+
+      // Light grid
+      ctx.strokeStyle = '#f1f5f9'
+      ctx.lineWidth = 0.5
+      for (let x = 0; x < canvas.width; x += 40) {
+        ctx.beginPath(); ctx.moveTo(x, 0); ctx.lineTo(x, canvas.height); ctx.stroke()
+      }
+      for (let y = 0; y < canvas.height; y += 40) {
+        ctx.beginPath(); ctx.moveTo(0, y); ctx.lineTo(canvas.width, y); ctx.stroke()
+      }
+
+      // Draw boundary lines
+      boundaryFeatures.forEach(f => {
+        getRings(f.geometry).forEach(ring => {
+          if (ring.length < 2) return
+          ctx.beginPath()
+          const [sx, sy] = toScreen(ring[0][0], ring[0][1])
+          ctx.moveTo(sx, sy)
+          for (let i = 1; i < ring.length; i++) {
+            const [px, py] = toScreen(ring[i][0], ring[i][1])
+            ctx.lineTo(px, py)
+          }
+          ctx.strokeStyle = '#2563eb'
+          ctx.lineWidth = 1.5
+          ctx.stroke()
+        })
+      })
+
+      // Draw pillars
+      features.forEach(f => {
+        const pid = f.properties.Pillar_id
+        const coords = getCoords(f.geometry)
+        if (coords.length < 3) return
+
+        ctx.beginPath()
+        const [sx, sy] = toScreen(coords[0][0], coords[0][1])
+        ctx.moveTo(sx, sy)
+        for (let i = 1; i < coords.length; i++) {
+          const [px, py] = toScreen(coords[i][0], coords[i][1])
+          ctx.lineTo(px, py)
+        }
+        ctx.closePath()
+
+        const category = f.properties.analysisCategory
+        if (pid === selectedId) {
+          ctx.fillStyle = 'rgba(249,115,22,0.85)'
+          ctx.strokeStyle = '#ea580c'
+          ctx.lineWidth = 2.5
+        } else if (pid === searchId) {
+          ctx.fillStyle = 'rgba(168,85,247,0.75)'
+          ctx.strokeStyle = '#7c3aed'
+          ctx.lineWidth = 2
+        } else if (category === 'good') {
+          ctx.fillStyle = 'rgba(34,197,94,0.55)'
+          ctx.strokeStyle = '#16a34a'
+          ctx.lineWidth = 1
+        } else if (category === 'fair') {
+          ctx.fillStyle = 'rgba(251,191,36,0.55)'
+          ctx.strokeStyle = '#d97706'
+          ctx.lineWidth = 1
+        } else if (category === 'bad') {
+          ctx.fillStyle = 'rgba(239,68,68,0.55)'
+          ctx.strokeStyle = '#b91c1c'
+          ctx.lineWidth = 1
+        } else {
+          ctx.fillStyle = 'rgba(34,211,238,0.55)'
+          ctx.strokeStyle = '#0891b2'
+          ctx.lineWidth = 1
+        }
+        ctx.fill()
+        ctx.stroke()
+
+        // Label when zoomed in
+        if (scale > 5) {
+          const cx = coords.reduce((s, c) => s + c[0], 0) / coords.length
+          const cy = coords.reduce((s, c) => s + c[1], 0) / coords.length
+          const [lx, ly] = toScreen(cx, cy)
+          ctx.fillStyle = pid === selectedId ? '#ffffff' : '#0c4a6e'
+          ctx.font = `bold ${Math.min(11, scale * 1.2)}px Arial`
+          ctx.textAlign = 'center'
+          ctx.textBaseline = 'middle'
+          ctx.fillText(pid, lx, ly)
+        }
+      })
+    }
+
+    function pointInPoly(px, py, coords) {
+      let inside = false
+      for (let i = 0, j = coords.length - 1; i < coords.length; j = i++) {
+        const [sx, sy] = toScreen(coords[i][0], coords[i][1])
+        const [ex, ey] = toScreen(coords[j][0], coords[j][1])
+        if (((sy > py) !== (ey > py)) && (px < (ex - sx) * (py - sy) / (ey - sy) + sx)) inside = !inside
+      }
+      return inside
+    }
+
+    canvas.addEventListener('mousemove', function(e) {
+      if (isPanning) {
+        offsetX += e.clientX - startX
+        offsetY += e.clientY - startY
+        startX = e.clientX
+        startY = e.clientY
+        draw()
+        return
+      }
+      const rect = canvas.getBoundingClientRect()
+      const mx = e.clientX - rect.left
+      const my = e.clientY - rect.top
+      let found = null
+      for (let i = features.length - 1; i >= 0; i--) {
+        if (pointInPoly(mx, my, getCoords(features[i].geometry))) {
+          found = features[i]; break
+        }
+      }
+      if (found) {
+        tooltip.style.display = 'block'
+        tooltip.style.left = (mx + 14) + 'px'
+        tooltip.style.top = (my - 10) + 'px'
+        tooltip.innerHTML = `<strong style="color:#eab308;">Pillar: ${found.properties.Pillar_id}</strong><br/>Area: ${found.properties.Area_sm?.toFixed(1)} m²`
+        canvas.style.cursor = 'pointer'
+      } else {
+        tooltip.style.display = 'none'
+        canvas.style.cursor = 'crosshair'
+      }
+    })
+
+    canvas.addEventListener('mousedown', e => {
+      isPanning = true
+      startX = e.clientX
+      startY = e.clientY
+      clickStartX = e.clientX
+      clickStartY = e.clientY
+      canvas.style.cursor = 'grabbing'
+      tooltip.style.display = 'none'
+    })
+
+    canvas.addEventListener('mouseup', function(e) {
+      isPanning = false
+      canvas.style.cursor = 'crosshair'
+      const dx = Math.abs(e.clientX - clickStartX)
+      const dy = Math.abs(e.clientY - clickStartY)
+      if (dx > 4 || dy > 4) return
+
+      const rect = canvas.getBoundingClientRect()
+      const mx = e.clientX - rect.left
+      const my = e.clientY - rect.top
+      selectedId = null
+      clearSelection()
+
+      for (let i = features.length - 1; i >= 0; i--) {
+        if (pointInPoly(mx, my, getCoords(features[i].geometry))) {
+          selectedId = features[i].properties.Pillar_id
+          showPillarInfo(features[i].properties)
+          highlightTableRow(selectedId)
+          break
+        }
+      }
+      draw()
+    })
+
+    canvas.addEventListener('mouseleave', () => {
+      isPanning = false
+      tooltip.style.display = 'none'
+    })
+
+    canvas.addEventListener('wheel', function(e) {
+      e.preventDefault()
+      const z = e.deltaY < 0 ? 1.15 : 0.87
+      const rect = canvas.getBoundingClientRect()
+      const mx = e.clientX - rect.left
+      const my = e.clientY - rect.top
+      offsetX = mx - z * (mx - offsetX)
+      offsetY = my - z * (my - offsetY)
+      scale *= z
+      draw()
+    }, { passive: false })
+
+    function showPillarInfo(p) {
+      document.getElementById('pillarInfoBar').style.display = 'block'
+      const items = [
+        ['ID', p.Pillar_id],
+        ['Layer', p.Layer],
+        ['Area', p.Area_sm?.toFixed(1) + ' m²'],
+        ['Length', p.Length?.toFixed(1) + ' m'],
+        ['Elevation', p.Elevation?.toFixed(1)],
+        ['Lithology', p.Lithology || 'N/A'],
+        ['Section', p.section || 'N/A'],
+        ['Analysis', (p.analysisCategory || 'Not analyzed').toString().toUpperCase()]
+      ]
+      document.getElementById('pillarInfoRow').innerHTML = items.map(([l, v]) =>
+        `<div style="background:#1e293b;padding:4px 10px;border-radius:6px;border:1px solid #334155;">
+          <div style="color:#64748b;font-size:9px;text-transform:uppercase;">${l}</div>
+          <div style="color:white;font-size:12px;font-weight:500;">${v ?? 'N/A'}</div>
+        </div>`
+      ).join('')
+    }
+
+    function clearSelection() {
+      selectedId = null
+      document.getElementById('pillarInfoBar').style.display = 'none'
+      document.querySelectorAll('tr[data-pillar-id]').forEach(r => r.style.background = '')
+      draw()
+    }
+
+    function highlightTableRow(pid) {
+      document.querySelectorAll('tr[data-pillar-id]').forEach(r => {
+        r.style.background = r.dataset.pillarId === String(pid) ? 'rgba(249,115,22,0.2)' : ''
+      })
+      const row = document.querySelector(`tr[data-pillar-id="${pid}"]`)
+      if (row) row.scrollIntoView({ behavior: 'smooth', block: 'center' })
+    }
+
+    function searchPillar(query) {
+      searchId = null
+      if (!query.trim()) { draw(); return }
+      const found = features.find(f =>
+        String(f.properties.Pillar_id).toLowerCase().includes(query.toLowerCase())
+      )
+      if (found) {
+        searchId = found.properties.Pillar_id
+        selectedId = found.properties.Pillar_id
+        showPillarInfo(found.properties)
+        const coords = getCoords(found.geometry)
+        const cx = coords.reduce((s, c) => s + c[0], 0) / coords.length
+        const cy = coords.reduce((s, c) => s + c[1], 0) / coords.length
+        const mx = (bounds.minX + bounds.maxX) / 2
+        const my = (bounds.minY + bounds.maxY) / 2
+        scale = 12
+        offsetX = -(cx - mx) * baseScale * scale
+        offsetY = (cy - my) * baseScale * scale
+      }
+      draw()
+    }
+
+    function resetView() {
+      scale = 1; offsetX = 0; offsetY = 0
+      selectedId = null; searchId = null
+      document.getElementById('mapSearch').value = ''
+      clearSelection()
+      draw()
+    }
+
+    async function fetchAnalysisIds() {
+      const res = await fetch('/api/data/analysis-ids', { headers: { authorization: token } })
+      const payload = await res.json()
+      if (!res.ok) throw new Error(payload.message || 'Failed to load pillar IDs')
+      return payload.ids || []
+    }
+
+    async function runAnalysis() {
+      const button = document.getElementById('analyzeBtn')
+      button.disabled = true
+      button.textContent = 'Analyzing...'
+      document.getElementById('analysisSummary').textContent = 'Preparing analysis...'
+      try {
+        const pillarIds = await fetchAnalysisIds()
+        if (!pillarIds.length) throw new Error('No pillar IDs available for analysis')
+
+        const chunkSize = 25
+        const analysisMap = {}
+        let good = 0
+        let fair = 0
+        let bad = 0
+
+        for (let idx = 0; idx < pillarIds.length; idx += chunkSize) {
+          const chunk = pillarIds.slice(idx, idx + chunkSize)
+          document.getElementById('analysisSummary').textContent =
+            `Analyzing ${Math.min(idx + chunkSize, pillarIds.length)}/${pillarIds.length}...`
+
+          const res = await fetch('/api/data/analysis', {
+            method: 'POST',
+            headers: {
+              'Content-Type': 'application/json',
+              authorization: token
+            },
+            body: JSON.stringify({ pillarIds: chunk })
+          })
+          const result = await res.json()
+          if (!res.ok) throw new Error(result.message || 'Analysis failed')
+
+          const chunkAnalysis = result.analysis || {}
+          Object.entries(chunkAnalysis).forEach(([id, category]) => {
+            analysisMap[id] = category
+          })
+          good += result.good || 0
+          fair += result.fair || 0
+          bad += result.bad || 0
+        }
+
+        applyAnalysisResults({ analysis: analysisMap })
+        showAnalysisSummary({ good, fair, bad })
+        showToast(`✅ Analysis complete: ${good} good, ${fair} fair, ${bad} bad`, 'green')
+      } catch (err) {
+        console.error('Analysis error:', err)
+        showToast('❌ ' + err.message, 'red')
+        document.getElementById('analysisSummary').textContent = 'Analysis failed'
+      } finally {
+        button.disabled = false
+        button.textContent = 'Analyze'
+      }
+    }
+
+    function applyAnalysisResults(result) {
+      const categoryMap = result.analysis || {}
+      features.forEach(f => {
+        f.properties.analysisCategory = categoryMap[f.properties.Pillar_id] || categoryMap[f.properties.pillar_id] || ''
+      })
+      draw()
+    }
+
+    function showAnalysisSummary(result) {
+      document.getElementById('analysisSummary').textContent =
+        `Good: ${result.good || 0}  Fair: ${result.fair || 0}  Bad: ${result.bad || 0}`
+    }
+
+    function zoomIn() { scale *= 1.3; draw() }
+    function zoomOut() { scale *= 0.77; draw() }
+
+    async function initMap() {
+      try {
+        const res = await fetch('/data/pillars.geojson')
+        const gj = await res.json()
+        features = gj.features
+        document.getElementById('pillarCount').textContent = features.length + ' pillars'
+
+        try {
+          const br = await fetch('/data/boundary.geojson')
+          const bg = await br.json()
+          boundaryFeatures = bg.features
+        } catch(e) {
+          console.log('No boundary loaded')
+        }
+
+        document.getElementById('loadMsg').style.display = 'none'
+
+        let minX = Infinity, maxX = -Infinity, minY = Infinity, maxY = -Infinity
+        features.forEach(f => {
+          getCoords(f.geometry).forEach(c => {
+            if (c[0] < minX) minX = c[0]
+            if (c[0] > maxX) maxX = c[0]
+            if (c[1] < minY) minY = c[1]
+            if (c[1] > maxY) maxY = c[1]
+          })
+        })
+        bounds = { minX, maxX, minY, maxY }
+        resize()
+      } catch(err) {
+        document.getElementById('loadMsg').textContent = 'Error loading map'
+        console.error(err)
+      }
+    }
+
+    window.addEventListener('resize', resize)
+
+    // ===========================
+    // TABLES
+    // ===========================
+    const roleAccess = {
+      surveyor: [
+        { key: 'survey', label: '📏 Survey', endpoint: '/api/data/survey-measurements', canEdit: true },
+        { key: 'section', label: '📋 Section', endpoint: '/api/data/sections', canEdit: false },
+        { key: 'boreholes', label: '🔩 Boreholes', endpoint: '/api/data/boreholes', canEdit: false },
+        { key: 'geo', label: '🪨 Geological', endpoint: '/api/data/geological', canEdit: false },
+        { key: 'geotech', label: '🔬 Geotechnical', endpoint: '/api/data/geotechnical', canEdit: false }
+      ],
+      miner: [
+        { key: 'section', label: '📋 Section', endpoint: '/api/data/sections', canEdit: false },
+        { key: 'boreholes', label: '🔩 Boreholes', endpoint: '/api/data/boreholes', canEdit: false },
+        { key: 'geotech', label: '🔬 Geotechnical', endpoint: '/api/data/geotechnical', canEdit: true }
+      ],
+      geologist: [
+        { key: 'section', label: '📋 Section', endpoint: '/api/data/sections', canEdit: false },
+        { key: 'boreholes', label: '🔩 Boreholes', endpoint: '/api/data/boreholes', canEdit: false },
+        { key: 'geo', label: '🪨 Geological', endpoint: '/api/data/geological', canEdit: true },
+        { key: 'geotech', label: '🔬 Geotechnical', endpoint: '/api/data/geotechnical', canEdit: false }
+      ]
+    }
+
+    let currentTab = null
+    let currentData = []
+    let filteredData = []
+    let currentCanEdit = false
+    let editIndex = null
+
+    function initTabs() {
+      const tabs = roleAccess[user.role] || []
+      const container = document.getElementById('tabsContainer')
+      container.innerHTML = tabs.map(t =>
+        `<button onclick="loadTab('${t.key}')" id="tab_${t.key}"
+          style="background:transparent;border:none;color:#94a3b8;padding:6px 14px;border-radius:6px;cursor:pointer;font-size:11px;white-space:nowrap;font-weight:500;">
+          ${t.label}
+        </button>`
+      ).join('')
+      if (tabs.length) loadTab(tabs[0].key)
+    }
+
+    async function loadTab(key) {
+      currentTab = key
+      const tabs = roleAccess[user.role] || []
+      const tab = tabs.find(t => t.key === key)
+      if (!tab) return
+
+      tabs.forEach(t => {
+        const el = document.getElementById('tab_' + t.key)
+        if (!el) return
+        if (t.key === key) {
+          el.style.background = '#eab308'
+          el.style.color = '#0f172a'
+          el.style.fontWeight = 'bold'
+        } else {
+          el.style.background = 'transparent'
+          el.style.color = '#94a3b8'
+          el.style.fontWeight = '500'
+        }
+      })
+
+      currentCanEdit = tab.canEdit
+      document.getElementById('addBtn').style.display = tab.canEdit ? 'inline-block' : 'none'
+      document.getElementById('tableContainer').innerHTML =
+        '<div style="color:#64748b;font-size:13px;text-align:center;margin-top:40px;">Loading...</div>'
+
+      try {
+        const res = await fetch(tab.endpoint, { headers: { authorization: token } })
+        currentData = await res.json()
+        filteredData = [...currentData]
+        document.getElementById('tableSearch').value = ''
+        renderTable()
+      } catch(err) {
+        document.getElementById('tableContainer').innerHTML =
+          '<div style="color:#ef4444;text-align:center;margin-top:40px;">Error loading data</div>'
+      }
+    }
+
+    function renderTable() {
+      if (!filteredData.length) {
+        document.getElementById('tableContainer').innerHTML =
+          '<div style="color:#64748b;text-align:center;margin-top:40px;">No data found</div>'
+        document.getElementById('rowCount').textContent = '0 rows'
+        return
+      }
+
+      const cols = Object.keys(filteredData[0])
+      document.getElementById('rowCount').textContent = filteredData.length + ' rows'
+
+      let html = `<table style="width:100%;border-collapse:collapse;font-size:11px;">`
+      html += `<thead><tr style="background:#0f172a;position:sticky;top:0;z-index:10;">`
+      cols.forEach(c => {
+        html += `<th style="padding:8px 10px;text-align:left;color:#94a3b8;font-weight:600;border-bottom:1px solid #334155;white-space:nowrap;">${c}</th>`
+      })
+      if (currentCanEdit) {
+        html += `<th style="padding:8px 10px;color:#94a3b8;font-weight:600;border-bottom:1px solid #334155;">Actions</th>`
+      }
+      html += `</tr></thead><tbody>`
+
+      filteredData.forEach((row, i) => {
+        const pid = row.Pillar_id || row.pillar_id || ''
+        html += `<tr data-pillar-id="${pid}"
+          style="border-bottom:1px solid #1e293b;cursor:pointer;transition:background 0.15s;"
+          onmouseover="this.style.background='rgba(255,255,255,0.05)'"
+          onmouseout="if(this.dataset.pillarId !== '${selectedId}') this.style.background=''"
+          onclick="onRowClick(this, '${pid}')">`
+        cols.forEach(c => {
+          const val = row[c] ?? '—'
+          html += `<td style="padding:7px 10px;color:${i % 2 === 0 ? '#e2e8f0' : '#cbd5e1'};white-space:nowrap;max-width:140px;overflow:hidden;text-overflow:ellipsis;" title="${val}">${val}</td>`
+        })
+        if (currentCanEdit) {
+          html += `<td style="padding:7px 10px;">
+            <button onclick="event.stopPropagation();openEditModal(${i})"
+              style="background:#0891b2;color:white;border:none;padding:3px 8px;border-radius:4px;cursor:pointer;font-size:10px;">Edit</button>
+          </td>`
+        }
+        html += `</tr>`
+      })
+
+      html += `</tbody></table>`
+      document.getElementById('tableContainer').innerHTML = html
+    }
+
+    function onRowClick(row, pillarId) {
+      if (!pillarId) return
+      selectedId = pillarId
+      highlightTableRow(pillarId)
+      const found = features.find(f => String(f.properties.Pillar_id) === String(pillarId))
+      if (found) {
+        showPillarInfo(found.properties)
+        const coords = getCoords(found.geometry)
+        const cx = coords.reduce((s, c) => s + c[0], 0) / coords.length
+        const cy = coords.reduce((s, c) => s + c[1], 0) / coords.length
+        const mx = (bounds.minX + bounds.maxX) / 2
+        const my = (bounds.minY + bounds.maxY) / 2
+        scale = 10
+        offsetX = -(cx - mx) * baseScale * scale
+        offsetY = (cy - my) * baseScale * scale
+        draw()
+      }
+    }
+
+    function filterTable(query) {
+      if (!query.trim()) {
+        filteredData = [...currentData]
+      } else {
+        filteredData = currentData.filter(row =>
+          Object.values(row).some(v => String(v).toLowerCase().includes(query.toLowerCase()))
+        )
+      }
+      renderTable()
+    }
+
+    function exportCSV() {
+      if (!filteredData.length) return
+      const cols = Object.keys(filteredData[0])
+      const csv = [
+        cols.join(','),
+        ...filteredData.map(r => cols.map(c => JSON.stringify(r[c] ?? '')).join(','))
+      ].join('\n')
+      const a = document.createElement('a')
+      a.href = 'data:text/csv;charset=utf-8,' + encodeURIComponent(csv)
+      a.download = (currentTab || 'export') + '_data.csv'
+      a.click()
+    }
+
+    // ===========================
+    // MODAL
+    // ===========================
+    function openAddModal() {
+      editIndex = null
+      document.getElementById('modalTitle').textContent = '+ Add New Record'
+      const cols = currentData.length ? Object.keys(currentData[0]) : []
+      document.getElementById('modalFields').innerHTML = cols.map(c =>
+        `<div>
+          <label style="color:#94a3b8;font-size:11px;display:block;margin-bottom:3px;">${c}</label>
+          <input name="${c}" placeholder="${c}"
+            style="width:100%;background:#0f172a;color:white;border:1px solid #475569;border-radius:6px;padding:7px 10px;font-size:12px;outline:none;box-sizing:border-box;"/>
+        </div>`
+      ).join('')
+      document.getElementById('modal').style.display = 'flex'
+    }
+
+    function openEditModal(idx) {
+      editIndex = idx
+      const row = filteredData[idx]
+      document.getElementById('modalTitle').textContent = '✏️ Edit Record'
+      const cols = Object.keys(row)
+      document.getElementById('modalFields').innerHTML = cols.map(c =>
+        `<div>
+          <label style="color:#94a3b8;font-size:11px;display:block;margin-bottom:3px;">${c}</label>
+          <input name="${c}" value="${row[c] ?? ''}"
+            style="width:100%;background:#0f172a;color:white;border:1px solid #475569;border-radius:6px;padding:7px 10px;font-size:12px;outline:none;box-sizing:border-box;"/>
+        </div>`
+      ).join('')
+      document.getElementById('modal').style.display = 'flex'
+    }
+
+    function closeModal() {
+      document.getElementById('modal').style.display = 'none'
+    }
+
+    async function submitModal() {
+      const inputs = document.querySelectorAll('#modalFields input')
+      const data = {}
+      inputs.forEach(i => { data[i.name] = i.value })
+
+      const tabs = roleAccess[user.role] || []
+      const tab = tabs.find(t => t.key === currentTab)
+      if (!tab) return
+
+      try {
+        let res
+        if (editIndex !== null) {
+          const row = filteredData[editIndex]
+          const idField = Object.keys(row).find(k =>
+            k.toLowerCase() === 'pillar_id' || k.toLowerCase() === 'id'
+          )
+          const rowId = row[idField]
+          res = await fetch(tab.endpoint + '/' + rowId, {
+            method: 'PUT',
+            headers: {
+              'Content-Type': 'application/json',
+              authorization: token
+            },
+            body: JSON.stringify(data)
+          })
+        } else {
+          res = await fetch(tab.endpoint, {
+            method: 'POST',
+            headers: {
+              'Content-Type': 'application/json',
+              authorization: token
+            },
+            body: JSON.stringify(data)
+          })
+        }
+
+        const result = await res.json()
+        if (res.ok) {
+          closeModal()
+          showToast(editIndex !== null ? '✅ Record updated successfully' : '✅ Record added successfully', 'green')
+          loadTab(currentTab)
+        } else {
+          showToast('❌ Error: ' + (result.message || 'Unknown error'), 'red')
+        }
+      } catch(err) {
+        showToast('❌ Network error: ' + err.message, 'red')
+      }
+    }
+
+    // ===========================
+    // TOAST
+    // ===========================
+    function showToast(msg, color) {
+      const toast = document.createElement('div')
+      toast.textContent = msg
+      toast.style.cssText = `
+        position:fixed;bottom:24px;right:24px;z-index:9999;
+        background:${color === 'green' ? '#16a34a' : '#dc2626'};
+        color:white;padding:12px 20px;border-radius:8px;
+        font-size:13px;font-family:sans-serif;
+        box-shadow:0 4px 12px rgba(0,0,0,0.4);
+        transition:opacity 0.3s;
+      `
+      document.body.appendChild(toast)
+      setTimeout(() => { toast.style.opacity = '0'; setTimeout(() => toast.remove(), 300) }, 3000)
+    }
+
+    // ===========================
+    // LOGOUT
+    // ===========================
+    function logout() {
+      localStorage.clear()
+      window.location.href = '/pages/landing.html'
+    }
+
+    // ===========================
+    // INIT
+    // ===========================
+    initMap()
+    initTabs()
+  </script>
+</body>
+</html>
